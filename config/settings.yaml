@@ -1,0 +1,157 @@
+# ============================================================
+# WarungScout 全局配置文件
+# 敏感信息（API Key 等）请使用环境变量，不要硬编码在此文件
+# ============================================================
+
+# ---------- 应用基本信息 ----------
+app:
+  name: "WarungScout"
+  version: "1.0.0"
+  environment: "production"  # production | preview | local
+
+# ---------- 日志配置 ----------
+logging:
+  level: "INFO"  # DEBUG | INFO | WARNING | ERROR
+  format: "json"  # json | text
+
+# ---------- Google Maps 抓取配置 ----------
+google_maps:
+  # 默认抓取方案: serpapi | places_api | playwright
+  default_source: "serpapi"
+  
+  # SerpApi 配置（API Key 从环境变量 SERPAPI_API_KEY 读取）
+  serpapi:
+    base_url: "https://serpapi.com/search"
+    timeout: 30  # 秒
+    max_retries: 3
+  
+  # Google Places API 配置（API Key 从环境变量 GOOGLE_PLACES_API_KEY 读取）
+  places_api:
+    base_url: "https://maps.googleapis.com/maps/api/place"
+    timeout: 30
+    max_retries: 3
+  
+  # Playwright 自建爬虫配置
+  playwright:
+    headless: true
+    timeout: 60000  # 毫秒
+    max_concurrent: 3
+
+# ---------- 评分模型配置 ----------
+scoring:
+  # 7个维度的权重（总和必须等于 1.0）
+  weights:
+    location: 0.25      # 地理位置价值
+    activity: 0.20      # 店主活跃度
+    competition: 0.15   # 竞争密度
+    cooperation: 0.15   # 配合度
+    digital: 0.15       # 数字化接受度
+    owner: 0.05         # 店主画像匹配
+    region: 0.05        # 区域潜力
+  
+  # 分级阈值
+  grades:
+    gold:
+      min_score: 80
+      label: "黄金"
+      emoji: "🔴"
+    silver:
+      min_score: 60
+      label: "白银"
+      emoji: "🟡"
+    potential:
+      min_score: 40
+      label: "潜力"
+      emoji: "🟢"
+    normal:
+      min_score: 0
+      label: "普通"
+      emoji: "⚪"
+
+# ---------- 销售步骤配置 ----------
+sales_process:
+  steps:
+    - id: 0
+      name: "未接触"
+      action: "系统初筛，分配优先级"
+      timeout_days: 30
+    - id: 1
+      name: "首次破冰"
+      action: "WA 发送破冰消息"
+      timeout_days: 3
+    - id: 2
+      name: "初次拜访"
+      action: "地推上门拜访"
+      timeout_days: 5
+    - id: 3
+      name: "推品试销"
+      action: "推荐主推品/小批量铺货"
+      timeout_days: 7
+    - id: 4
+      name: "深度合作"
+      action: "签约独家/联合促销"
+      timeout_days: 14
+    - id: 5
+      name: "长期运营"
+      action: "定期巡访/新品推荐"
+      timeout_days: 14
+  
+  # 冷却配置
+  cooling:
+    no_response_days: 7  # 连续无回复天数，触发冷却
+    cooling_days: 15     # 冷却持续天数
+
+# ---------- 数据库配置 ----------
+database:
+  # D1 配置通过 wrangler.toml 管理
+  # 本地开发使用 SQLite
+  local_path: "./data/warungscout.db"
+  pool_size: 5
+
+# ---------- 缓存配置 ----------
+cache:
+  # KV 缓存 TTL
+  warung_list_ttl: 300      # 5 分钟
+  warung_detail_ttl: 60     # 1 分钟
+  stats_ttl: 600            # 10 分钟
+  google_maps_response_ttl: 86400  # 24 小时
+
+# ---------- 前端配置 ----------
+frontend:
+  # 对外视图配置
+  public:
+    page_title: "WarungScout — 印尼 Warung 渠道质量指数"
+    description: "覆盖印尼核心城市的 Warung 质量评估与销售导航系统"
+    items_per_page: 20
+  
+  # 对内视图配置
+  internal:
+    items_per_page: 50
+    default_sort: "final_score_desc"
+
+# ---------- 安全配置 ----------
+security:
+  # JWT 配置（密钥从环境变量读取）
+  jwt_algorithm: "HS256"
+  jwt_expiry_hours: 24
+  
+  # CORS
+  cors_allowed_origins:
+    - "https://warungscout.com"
+    - "https://*.warungscout.com"
+    - "http://localhost:5173"  # 本地开发
+    - "http://localhost:8501"  # Streamlit
+
+# ---------- 通知配置 ----------
+notifications:
+  # WhatsApp 配置（后续扩展）
+  whatsapp:
+    enabled: false
+    api_url: ""
+  
+  # 邮件配置（后续扩展）
+  email:
+    enabled: false
+    smtp_host: ""
+    smtp_port: 587
+    from_email: ""

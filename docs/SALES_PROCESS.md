@@ -8,7 +8,7 @@
 
 | 步骤 | 状态 | 销售动作 | 触发条件 | 成功标志 |
 | :--- | :--- | :--- | :--- | :--- |
-| **0** | 未接触 | 系统初筛，分配优先级 | 数据录入系统 | 产生评分 |
+| **0** | 未接触 | 系统初筛，分配优先级 | Google Maps 抓取 或 数据录入 | 产生评分 |
 | **1** | 首次破冰 | WA 发送破冰消息 | 分数 ≥ 60 分 | 店主回复 |
 | **2** | 初次拜访 | 地推上门拜访 | 回复且有基础兴趣 | 当面沟通 10min+ |
 | **3** | 推品试销 | 推荐主推品/小批量铺货 | 拜访沟通顺畅 | 店主下单/上架 |
@@ -17,6 +17,9 @@
 
 
 ## 2. 状态机流程图
+[Google Maps 自动抓取] ← 新增数据入口
+│
+▼
 [数据录入]
 │
 ▼
@@ -24,6 +27,8 @@
 │ Step 0: 未接触 │
 │ 动作: 系统自动评分，确定初始等级 │
 │ 判断: 分数 ≥ 60 ? │
+│ 注意: 新抓取的 Warung 配合度/数字化/画像 │
+│ 默认 50 分（中性），等待销售反馈 │
 └─────────────────┬───────────────────────────┘
 │ 是
 ▼
@@ -68,6 +73,8 @@ text
 
 根据 Warung 当前步骤和评分，自动生成下一步销售动作。每个建议包含：下一步步骤编号、具体动作描述、话术模板、优先级、截止天数、触达渠道。
 
+**针对 Google Maps 抓取的新 Warung**：首次评分后，如果分数 ≥ 60，自动进入 Step 1（破冰）；如果分数 < 60，进入培育池等待后续激活。
+
 ### 3.2 Python 实现
 
 ```python
@@ -86,11 +93,14 @@ def generate_next_advice(warung: Dict[str, Any], score_result: Dict[str, Any]) -
     # Step 0: 未接触
     # ============================================
     if current_step == 0:
+        # 检查是否是新抓取的 Warung（来自 Google Maps）
+        is_new_gmaps = warung.get('source') == 'google_maps'
+
         if score >= 70:
             return {
                 'next_step': 1,
                 'action': '立即通过 WhatsApp 发送破冰消息',
-                'description': '高分 Warung，优先触达',
+                'description': '高分 Warung，优先触达' + ('（新抓取，建议尽快联系）' if is_new_gmaps else ''),
                 'template': 'WARUNG_GOLD_BREAK_ICE',
                 'priority': 'high',
                 'timeout_days': 1,
@@ -100,7 +110,7 @@ def generate_next_advice(warung: Dict[str, Any], score_result: Dict[str, Any]) -
             return {
                 'next_step': 1,
                 'action': '3 天内通过 WhatsApp 发送破冰消息',
-                'description': '中等潜力 Warung，建议跟进',
+                'description': '中等潜力 Warung，建议跟进' + ('（新抓取，可先观察再联系）' if is_new_gmaps else ''),
                 'template': 'WARUNG_SILVER_BREAK_ICE',
                 'priority': 'medium',
                 'timeout_days': 3,
@@ -110,7 +120,7 @@ def generate_next_advice(warung: Dict[str, Any], score_result: Dict[str, Any]) -
             return {
                 'next_step': 0,
                 'action': '暂不触达，添加到培育池',
-                'description': '低分 Warung，等待后续激活',
+                'description': '低分 Warung，等待后续激活' + ('（新抓取，建议积累更多数据后再评估）' if is_new_gmaps else ''),
                 'priority': 'low',
                 'timeout_days': 30,
                 'channel': None
@@ -261,7 +271,6 @@ def generate_next_advice(warung: Dict[str, Any], score_result: Dict[str, Any]) -
             'channel': 'visit'
         }
 
-    # 默认返回
     return {
         'next_step': current_step,
         'action': '状态异常，请联系管理员',
@@ -272,17 +281,18 @@ def generate_next_advice(warung: Dict[str, Any], score_result: Dict[str, Any]) -
     }
 4. 反馈驱动的动态调分
 4.1 反馈类型与分数变化映射
-反馈类型	配合度变化	数字化变化	总分变化
-wa_replied	+2	+1	+3
-wa_not_replied_3x	-5	0	-5
-visit_agreed	+5	0	+5
-visit_refused	-8	0	-8
-trial_ordered	+5	+3	+8
-trial_rejected	-3	0	-3
-cooperation_signed	+10	+5	+15
-referral_given	+5	+3	+8
-display_refused	-10	0	-10
-sales_data_shared	+3	+2	+5
+反馈类型	配合度变化	数字化变化	总分变化	触发场景
+wa_replied	+2	+1	+3	破冰阶段店主回复 WA
+wa_not_replied_3x	-5	0	-5	连续 3 次 WA 无回复
+visit_agreed	+5	0	+5	首次拜访成功
+visit_refused	-8	0	-8	店主拒绝拜访
+trial_ordered	+5	+3	+8	试销铺货成功
+trial_rejected	-3	0	-3	拒绝试销
+cooperation_signed	+10	+5	+15	签约深度合作
+referral_given	+5	+3	+8	店主转介绍新 Warung
+display_refused	-10	0	-10	拒绝陈列要求
+sales_data_shared	+3	+2	+5	分享销售数据
+gmaps_imported	0	0	0	新抓取，记录来源
 4.2 Python 实现
 python
 def update_score_from_feedback(warung_id: str, feedback_type: str) -> Dict[str, Any]:
@@ -300,22 +310,20 @@ def update_score_from_feedback(warung_id: str, feedback_type: str) -> Dict[str, 
         'referral_given': {'cooperation': +5, 'digital': +3, 'total': +8},
         'display_refused': {'cooperation': -10, 'digital': 0, 'total': -10},
         'sales_data_shared': {'cooperation': +3, 'digital': +2, 'total': +5},
+        'gmaps_imported': {'cooperation': 0, 'digital': 0, 'total': 0},
     }
 
     delta = FEEDBACK_DELTAS.get(feedback_type, {'cooperation': 0, 'digital': 0, 'total': 0})
 
-    # 获取 Warung 数据
     warung = get_warung(warung_id)
 
     # 更新配合度和数字化分数（保持 0-100 范围）
     warung['cooperation_score'] = max(0, min(100, warung.get('cooperation_score', 50) + delta['cooperation']))
     warung['digital_score'] = max(0, min(100, warung.get('digital_score', 50) + delta['digital']))
 
-    # 重新计算总分
     new_score_result = calculate_final_score(warung)
     warung['final_score'] = new_score_result['total_score']
 
-    # 保存并记录历史
     save_warung(warung)
     log_score_change(warung_id, feedback_type, delta, new_score_result)
 
@@ -365,6 +373,19 @@ Kami rutin bagi-bagi info produk baru, promo grosir, dan pelatihan usaha.
 Kak boleh join grup WA kami? Gratis dan tidak ada kewajiban.
 
 Kalau berminat, reply "MAU" ya 🙏
+新抓取 Warung 专用话术（首次联系）
+text
+Halo Kak [Nama],
+
+Kami dari [Nama Perusahaan], tim yang membantu supplier & warung di [kota].
+
+Kami melihat warung Kak [Nama] di Google Maps dan tertarik untuk menjalin kerjasama.
+
+Saat ini kami sedang mencari mitra warung di area [lokasi] untuk program [nama program].
+
+Boleh kami kenalkan lebih lanjut? Hanya 2 menit via WA.
+
+Terima kasih 🙏
 6. 销售反馈采集表单
 6.1 表单字段
 字段	类型	选项/示例

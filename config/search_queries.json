@@ -1,0 +1,126 @@
+{
+  "version": "1.0",
+  "description": "印尼 Warung 搜索词库 - 用于 Google Maps 自动抓取",
+  "queries": [
+    {
+      "id": "jkt_1",
+      "keyword": "warung Jakarta",
+      "location": "-6.2088,106.8456,14z",
+      "city": "Jakarta",
+      "tier": 1,
+      "is_active": true
+    },
+    {
+      "id": "jkt_2",
+      "keyword": "warung makan Jakarta",
+      "location": "-6.2088,106.8456,14z",
+      "city": "Jakarta",
+      "tier": 1,
+      "is_active": true
+    },
+    {
+      "id": "jkt_3",
+      "keyword": "toko kelontong Jakarta",
+      "location": "-6.2088,106.8456,14z",
+      "city": "Jakarta",
+      "tier": 1,
+      "is_active": true
+    },
+    {
+      "id": "sby_1",
+      "keyword": "warung Surabaya",
+      "location": "-7.2575,112.7521,14z",
+      "city": "Surabaya",
+      "tier": 1,
+      "is_active": true
+    },
+    {
+      "id": "sby_2",
+      "keyword": "toko kelontong Surabaya",
+      "location": "-7.2575,112.7521,14z",
+      "city": "Surabaya",
+      "tier": 1,
+      "is_active": true
+    },
+    {
+      "id": "bali_1",
+      "keyword": "warung Bali",
+      "location": "-8.3405,115.0920,14z",
+      "city": "Bali",
+      "tier": 2,
+      "is_active": true
+    },
+    {
+      "id": "bali_2",
+      "keyword": "warung makan Bali",
+      "location": "-8.3405,115.0920,14z",
+      "city": "Bali",
+      "tier": 2,
+      "is_active": true
+    },
+    {
+      "id": "bdg_1",
+      "keyword": "warung Bandung",
+      "location": "-6.9175,107.6191,14z",
+      "city": "Bandung",
+      "tier": 1,
+      "is_active": true
+    },
+    {
+      "id": "bdg_2",
+      "keyword": "toko kelontong Bandung",
+      "location": "-6.9175,107.6191,14z",
+      "city": "Bandung",
+      "tier": 1,
+      "is_active": true
+    },
+    {
+      "id": "mdn_1",
+      "keyword": "warung Medan",
+      "location": "3.5952,98.6722,14z",
+      "city": "Medan",
+      "tier": 1,
+      "is_active": true
+    },
+    {
+      "id": "mdn_2",
+      "keyword": "toko kelontong Medan",
+      "location": "3.5952,98.6722,14z",
+      "city": "Medan",
+      "tier": 1,
+      "is_active": true
+    },
+    {
+      "id": "jogja_1",
+      "keyword": "warung Yogyakarta",
+      "location": "-7.7956,110.3695,14z",
+      "city": "Yogyakarta",
+      "tier": 2,
+      "is_active": true
+    },
+    {
+      "id": "jogja_2",
+      "keyword": "toko kelontong Yogyakarta",
+      "location": "-7.7956,110.3695,14z",
+      "city": "Yogyakarta",
+      "tier": 2,
+      "is_active": true
+    },
+    {
+      "id": "mks_1",
+      "keyword": "warung Makassar",
+      "location": "-5.1477,119.4327,14z",
+      "city": "Makassar",
+      "tier": 2,
+      "is_active": true
+    },
+    {
+      "id": "smg_1",
+      "keyword": "warung Semarang",
+      "location": "-6.9667,110.4167,14z",
+      "city": "Semarang",
+      "tier": 2,
+      "is_active": true
+    }
+  ]
+}

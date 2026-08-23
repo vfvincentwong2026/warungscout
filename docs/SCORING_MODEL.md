@@ -5,13 +5,6 @@
 
 
 ## 1. 评分公式
-# 📊 WarungScout 评分模型详解
-
-**版本**：v1.0.0
-**日期**：2026年8月23日
-
-
-## 1. 评分公式
 Final Score =
 Location × 25%
 
@@ -51,6 +44,8 @@ text
 
 | 指标 | 加分 | 数据来源 |
 | :--- | :--- | :--- |
+| Google Maps 评分 ≥ 4.0 且评论数 ≥ 50 | +10 | Google Maps API |
+| Google Maps 评分 ≥ 3.5 且评论数 ≥ 20 | +5 | Google Maps API |
 | 在 WA 群内活跃发言（近7天≥3次） | +10 | WA 群运营记录 |
 | 曾配合过地推活动 | +8 | 历史记录 |
 | 主动询问过新品/促销 | +7 | 历史记录 |
@@ -88,6 +83,8 @@ text
 
 **计算方式**：累加所有匹配指标的加分，再扣除扣分项，满分 20 分，额外加分（推荐）不占用满分额度，作为 bonus。
 
+**注意**：新抓取的 Warung 无历史记录时，配合度默认 50 分（中性），等待销售首次反馈后更新。
+
 
 ### 维度5：数字化接受度（权重 15%）
 
@@ -110,6 +107,8 @@ text
 
 **计算方式**：累加所有匹配指标的加分，满分 20 分，额外加分（主动意愿）不占用满分额度，作为 bonus。
 
+**注意**：新抓取的 Warung 无历史记录时，数字化接受度默认 50 分（中性），等待销售首次接触后更新。
+
 
 ### 维度6：店主画像匹配（权重 5%）
 
@@ -124,6 +123,8 @@ text
 
 **计算方式**：累加所有匹配指标的加分，满分 13 分，封顶 10 分。
 
+**注意**：新抓取的 Warung 无访谈记录时，店主画像默认 50 分（中性），等待销售首次拜访后更新。
+
 
 ### 维度7：区域潜力（权重 5%）
 
@@ -136,8 +137,27 @@ text
 
 **计算方式**：直接查表得分，满分 10 分。
 
+**注意**：从 Google Maps 抓取时，根据地址自动识别城市并匹配层级。
 
-## 3. 分级标准
+
+## 3. 新抓取 Warung 的初始评分策略
+
+当 Warung 从 Google Maps 首次抓取导入时，并非所有维度都有数据。采用以下策略：
+
+| 维度 | 初始值来源 | 说明 |
+| :--- | :--- | :--- |
+| 位置价值 | Google Maps 周边设施分析 | 自动计算 |
+| 活跃度 | Google Maps 评分 + 评论数 | 自动计算 |
+| 竞争密度 | Google Maps Places API | 自动计算 |
+| 配合度 | 默认 50 分 | 等待销售首次反馈 |
+| 数字化接受度 | 默认 50 分 | 等待销售首次接触 |
+| 店主画像 | 默认 50 分 | 等待销售首次拜访 |
+| 区域潜力 | 地址自动识别 | 自动计算 |
+
+**初次评分后**：部分维度（配合度/数字化/画像）采用中性分，确保新 Warung 不会被误判为极低分而被忽略。随着销售团队的实际接触和反馈，这些维度会逐步调整为真实分数。
+
+
+## 4. 分级标准
 
 | 分数区间 | 等级 | 配合度特征 | 推荐触达方式 |
 | :--- | :--- | :--- | :--- |
@@ -147,12 +167,13 @@ text
 | < 40 | ⚪ **普通** | 低配合度+低数字化 | 暂缓触达，沉淀数据 |
 
 
-## 4. 评分输出示例
+## 5. 评分输出示例
 
 ```json
 {
   "warung_name": "Warung Bu Siti",
   "location": "Jl. Raya Canggu No. 45, Bali",
+  "source": "google_maps",
   "final_score": 87,
   "grade": "gold",
   "breakdown": {
@@ -164,12 +185,16 @@ text
     "owner": { "score": 65, "weight": 0.05, "weighted": 3.25 },
     "region": { "score": 85, "weight": 0.05, "weighted": 4.25 }
   },
+  "data_completeness": {
+    "from_google_maps": ["location", "activity", "competition", "region"],
+    "pending_sales_input": ["cooperation", "digital", "owner"]
+  },
   "top_actions": [
     "优先联系，配合度高+数字化接受度好",
     "可直接通过 WA 推送新品信息，预期回复率高"
   ]
 }
-5. Python 实现
+6. Python 实现
 python
 from typing import Dict, Any
 
@@ -208,7 +233,6 @@ def calculate_final_score(warung: Dict[str, Any]) -> Dict[str, Any]:
         region_score * weights['region']
     )
 
-    # 四舍五入取整
     final_score = round(total)
 
     # 分级
@@ -244,12 +268,16 @@ def calculate_final_score(warung: Dict[str, Any]) -> Dict[str, Any]:
 def calculate_cooperation_score(warung: Dict[str, Any]) -> int:
     """
     计算配合度得分 (0-100)
-    注意：返回 0-100 的分数，在加权时乘以权重 0.15
+    返回 0-100 的分数，在加权时乘以权重 0.15
     """
+    # 如果是新抓取的 Warung，无历史记录，默认 50 分
+    if warung.get('source') == 'google_maps' and warung.get('no_history', True):
+        return 50
+
     score = 0
 
     # 1. 历史响应率 (0-40分)
-    reply_rate = warung.get('reply_rate', 0)  # 0.0 - 1.0
+    reply_rate = warung.get('reply_rate', 0)
     if reply_rate > 0.7:
         score += 40
     elif reply_rate > 0.3:
@@ -272,8 +300,31 @@ def calculate_cooperation_score(warung: Dict[str, Any]) -> int:
     if warung.get('referral_given', False):
         score += 10
 
-    # 如果没有历史记录，给予基础分
-    if warung.get('no_history', True):
-        return 50
-
     return max(0, min(100, score))
+
+
+def calculate_activity_score(warung: Dict[str, Any]) -> int:
+    """
+    计算活跃度得分 (0-100)
+    结合 Google Maps 数据和历史记录
+    """
+    score = 0
+
+    # 从 Google Maps 获取的评分和评论数
+    gm_rating = warung.get('gm_rating', 0)
+    gm_reviews = warung.get('gm_reviews', 0)
+
+    if gm_rating >= 4.0 and gm_reviews >= 50:
+        score += 10
+    elif gm_rating >= 3.5 and gm_reviews >= 20:
+        score += 5
+
+    # WA 群活跃度
+    if warung.get('wa_active', False):
+        score += 10
+
+    # 历史活动参与
+    if warung.get('participated_promo', False):
+        score += 8
+
+    return min(score, 20) * 5  # 映射到 0-100

@@ -111,6 +111,22 @@ text
 
 ---
 
+## 🔄 与 Nusantara Brand OS 的数据同步
+
+WarungScout 的评分/分级数据可直接灌入 [Nusantara Brand OS](https://github.com/vfvincentwong2026/nusantara-brand-os) 的渠道地图（评分模型同源，schema 对齐 `warungs` 表）：
+
+```bash
+# 本地 D1（wrangler dev 数据）
+bash scripts/sync-to-brandos.sh
+
+# 远端生产 D1
+WS_REMOTE=1 bash scripts/sync-to-brandos.sh
+```
+
+脚本流程：`wrangler d1 export --table warungs` → Brand OS 导入器（`nbo.importer.warungscout`，维度分直写，缺失自动回退评分模型重算）→ 灌入 Brand OS `channel_points`。之后按 Brand OS 侧 README 刷新地图数据并部署即可。
+
+---
+
 ## 🚀 快速开始
 
 ### 前置条件
